@@ -7,7 +7,6 @@
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #121212; color: #fff; text-align: center; margin: 0; padding: 0; overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
         
-        /* 키오스크 화면 */
         #kiosk { padding: 15px 10px; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; }
         h1 { color: #ffeb3b; font-size: 22px; margin: 5px 0 10px 0; }
         .level-badge { background: #00e676; color: #121212; padding: 5px 15px; border-radius: 20px; font-size: 16px; font-weight: bold; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0, 230, 118, 0.3); }
@@ -25,9 +24,10 @@
         .btn-start { background: #00e676; padding: 15px; font-size: 18px; border-radius: 10px; border: none; font-weight: bold; color: #121212; cursor: pointer; width: 90%; max-width: 340px; box-shadow: 0 4px 10px rgba(0, 230, 118, 0.4); margin-top: 5px; }
         .btn-start:active { transform: scale(0.98); }
         
-        /* 플레이어 및 오버레이 UI */
         #player { display: none; width: 100vw; height: 100vh; background: #000; position: relative; touch-action: none; }
-        video { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        video { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; visibility: hidden; pointer-events: none; background: #000; }
+        video.is-active { opacity: 1; visibility: visible; z-index: 2; }
+        video.is-buffering { opacity: 0; visibility: hidden; z-index: 1; }
         
         #ui-layer { position: absolute; top: 10px; left: 10px; text-align: left; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; z-index: 10; backdrop-filter: blur(4px); transform: scale(0.9); transform-origin: top left; border: 1px solid #444; width: 250px; pointer-events: auto; }
         #ui-layer h2 { margin: 0 0 8px 0; color: #ffeb3b; font-size: 14px; border-bottom: 1px solid #555; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
@@ -40,12 +40,10 @@
         .dot-full { color: #ff5252; letter-spacing: 2px; font-size: 10px; margin-left: 8px;}
         .dot-empty { color: #555; letter-spacing: 2px; font-size: 10px; }
         
-        /* 레벨업 팝업창 */
         #complete-msg { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 2px solid #00e676; padding: 40px 20px; border-radius: 15px; z-index: 20; width: 80%; max-width: 320px; pointer-events: auto; }
         #complete-msg h2 { font-size: 26px; color: #ffeb3b; margin: 0 0 10px 0; }
         #complete-msg h3 { font-size: 22px; color: #00e676; margin: 0 0 25px 0; }
 
-        /* 터치 하트 애니메이션 */
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
@@ -71,8 +69,8 @@
 </div>
 
 <div id="player">
-    <video id="vid1" playsinline></video>
-    <video id="vid2" playsinline style="display:none;"></video>
+    <video id="vid1" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video id="vid2" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
     
     <div id="ui-layer"></div>
     
@@ -148,65 +146,122 @@
         }
     }
 
-    function startMukbang() {
+    function prepareVideo(video, item) {
+        if (!item) return;
+        video.preload = 'auto';
+        video.classList.remove('is-active');
+        video.classList.add('is-buffering');
+
+        // 같은 파일 재생도 반드시 0초부터 시작하도록 새 로드를 준비한다.
+        if (video.getAttribute('src') !== item.file) {
+            video.src = item.file;
+        }
+        video.load();
+    }
+
+    function waitUntilPlayable(video) {
+        if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            const done = () => {
+                video.removeEventListener('canplay', done);
+                video.removeEventListener('canplaythrough', done);
+                resolve();
+            };
+
+            video.addEventListener('canplay', done, { once: true });
+            video.addEventListener('canplaythrough', done, { once: true });
+        });
+    }
+
+    async function startMukbang() {
         generateQueue();
         if (queue.length === 0) {
             alert("음식을 최소 1개 이상 담아주세요!");
             return;
         }
+
         document.getElementById('kiosk').style.display = 'none';
         document.getElementById('player').style.display = 'block';
-        
+
         currentIdx = 0;
         activeVideo = 1;
-        
+
         const v1 = document.getElementById('vid1');
         const v2 = document.getElementById('vid2');
-        
-        v1.src = queue[0].file;
-        v1.load();
-        if (queue.length > 1) {
-            v2.src = queue[1].file;
-            v2.load();
-        }
-        
+
+        // 첫 영상과 다음 영상을 동시에 요청해 첫 전환부터 버퍼를 확보한다.
+        prepareVideo(v1, queue[0]);
+        if (queue.length > 1) prepareVideo(v2, queue[1]);
+
         updateUI(queue[0].snapshot, queue[0].name);
-        v1.style.display = 'block';
-        v2.style.display = 'none';
+        await waitUntilPlayable(v1);
+
         v1.playbackRate = currentPlaybackRate;
-        v1.play();
+        try {
+            await v1.play();
+            v1.classList.remove('is-buffering');
+            v1.classList.add('is-active');
+        } catch (err) {
+            console.error('첫 영상 재생 실패:', err);
+        }
     }
 
     document.getElementById('vid1').onended = playNext;
     document.getElementById('vid2').onended = playNext;
 
-    function playNext() {
-        currentIdx++;
-        if (currentIdx >= queue.length) {
+    let isSwitchingVideo = false;
+
+    async function playNext() {
+        if (isSwitchingVideo) return;
+        isSwitchingVideo = true;
+
+        const finishedIdx = currentIdx;
+        const nextIdx = finishedIdx + 1;
+
+        if (nextIdx >= queue.length) {
             playerLevel++;
             localStorage.setItem('mukbangLevel', playerLevel);
             document.getElementById('ui-layer').style.display = 'none';
             document.getElementById('new-level').innerText = playerLevel;
             document.getElementById('complete-msg').style.display = 'block';
+            isSwitchingVideo = false;
             return;
         }
 
         const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
-        
-        activeVideo = activeVideo === 1 ? 2 : 1;
-        const nextVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
-        
-        updateUI(queue[currentIdx].snapshot, queue[currentIdx].name);
-        
-        currentVid.style.display = 'none';
-        nextVid.style.display = 'block';
+        const nextVideoNumber = activeVideo === 1 ? 2 : 1;
+        const nextVid = nextVideoNumber === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
+
+        // 현재 영상의 마지막 프레임은 그대로 유지하고, 다음 영상이 실제 재생 가능한 상태가 될 때까지 기다린다.
+        await waitUntilPlayable(nextVid);
         nextVid.playbackRate = currentPlaybackRate;
-        nextVid.play(); 
-        
-        let preloadIdx = currentIdx + 1;
-        if (preloadIdx < queue.length) {
-            currentVid.src = queue[preloadIdx].file;
-            currentVid.load();
+
+        try {
+            // 다음 영상을 화면 밖(투명 상태)에서 먼저 재생시킨다.
+            // 실제 playing 상태가 된 뒤에만 화면을 교체하므로 삼각형/검은 화면 노출을 막는다.
+            await nextVid.play();
+
+            currentIdx = nextIdx;
+            activeVideo = nextVideoNumber;
+            updateUI(queue[currentIdx].snapshot, queue[currentIdx].name);
+
+            nextVid.classList.remove('is-buffering');
+            nextVid.classList.add('is-active');
+            currentVid.classList.remove('is-active');
+            currentVid.classList.add('is-buffering');
+
+            // 전환 직후 방금 끝난 비디오 태그를 그 다음 영상 전용 버퍼로 즉시 재사용한다.
+            const preloadIdx = currentIdx + 1;
+            if (preloadIdx < queue.length) {
+                prepareVideo(currentVid, queue[preloadIdx]);
+            }
+        } catch (err) {
+            console.error('다음 영상 재생 실패:', err);
+        } finally {
+            isSwitchingVideo = false;
         }
     }
 
@@ -236,7 +291,7 @@
         const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
         currentVid.pause();
         
-        if (confirm("홈으로 이동 하시겠습니까?\n현재 주문 내역은 초기화됩니다.")) {
+        if (confirm("홈으로 이동 하시겠습니까?\\n현재 주문 내역은 초기화됩니다.")) {
             location.reload();
         } else {
             currentVid.play();
