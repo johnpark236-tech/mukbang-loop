@@ -26,7 +26,7 @@
         .btn-start:active { transform: scale(0.98); }
         
         /* 플레이어 및 오버레이 UI */
-        #player { display: none; width: 100vw; height: 100vh; background: #000; position: relative; touch-action: none; /* 터치 제스처 중복 방지 */ }
+        #player { display: none; width: 100vw; height: 100vh; background: #000; position: relative; touch-action: none; }
         video { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
         
         #ui-layer { position: absolute; top: 10px; left: 10px; text-align: left; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; z-index: 10; backdrop-filter: blur(4px); transform: scale(0.9); transform-origin: top left; border: 1px solid #444; width: 250px; pointer-events: auto; }
@@ -53,7 +53,7 @@
         .floating-heart {
             position: absolute;
             font-size: 35px;
-            pointer-events: none; /* 하트가 터치를 방해하지 않도록 설정 */
+            pointer-events: none;
             animation: floatUp 0.8s ease-out forwards;
             z-index: 9999;
             filter: drop-shadow(0px 0px 5px rgba(255,0,0,0.5));
@@ -63,6 +63,7 @@
 <body>
 
 <div id="kiosk">
+    <h3 style="color: #00e676; margin-bottom: 10px;">시원 먹방 스튜디오입니다.</h3>
     <div class="level-badge">🏆 현재 레벨: Lv <span id="current-level">1</span></div>
     <h1>🍽️ 무한 먹방 퀘스트</h1>
     <div class="menu-container" id="menu-container"></div>
@@ -83,7 +84,6 @@
 </div>
 
 <script>
-    // 1. 접속 시 레벨 불러오기
     let playerLevel = localStorage.getItem('mukbangLevel');
     if (!playerLevel) {
         playerLevel = 1;
@@ -93,7 +93,6 @@
     }
     document.getElementById('current-level').innerText = playerLevel;
 
-    // 2. 파일명 세팅
     const foods = [
         { id: 'chicken', name: '치킨', file: 'chicken.mp4', qty: 0, icon: '🍗' },
         { id: 'pizza', name: '피자', file: 'pizza.mp4', qty: 0, icon: '🍕' },
@@ -149,7 +148,6 @@
         }
     }
 
-    // 3. 듀얼 버퍼 선로딩(Pre-load) 시스템 적용
     function startMukbang() {
         generateQueue();
         if (queue.length === 0) {
@@ -165,7 +163,6 @@
         const v1 = document.getElementById('vid1');
         const v2 = document.getElementById('vid2');
         
-        // 첫 번째 영상 및 두 번째 영상 선로딩
         v1.src = queue[0].file;
         v1.load();
         if (queue.length > 1) {
@@ -180,14 +177,12 @@
         v1.play();
     }
 
-    // 영상 종료 이벤트 공통 바인딩
     document.getElementById('vid1').onended = playNext;
     document.getElementById('vid2').onended = playNext;
 
     function playNext() {
         currentIdx++;
         if (currentIdx >= queue.length) {
-            // 게임 클리어
             playerLevel++;
             localStorage.setItem('mukbangLevel', playerLevel);
             document.getElementById('ui-layer').style.display = 'none';
@@ -198,7 +193,6 @@
 
         const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
         
-        // 비디오 교체
         activeVideo = activeVideo === 1 ? 2 : 1;
         const nextVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
         
@@ -207,9 +201,8 @@
         currentVid.style.display = 'none';
         nextVid.style.display = 'block';
         nextVid.playbackRate = currentPlaybackRate;
-        nextVid.play(); // 이미 이전 턴에서 선로딩 되어있음
+        nextVid.play(); 
         
-        // 그 다음 영상을 위한 백그라운드 선로딩 작업
         let preloadIdx = currentIdx + 1;
         if (preloadIdx < queue.length) {
             currentVid.src = queue[preloadIdx].file;
@@ -239,18 +232,17 @@
     }
 
     function goHome(e) {
-        e.stopPropagation(); // 하트 터치 이벤트 차단
+        e.stopPropagation();
         const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
-        currentVid.pause(); // 일시정지
+        currentVid.pause();
         
         if (confirm("홈으로 이동 하시겠습니까?\n현재 주문 내역은 초기화됩니다.")) {
             location.reload();
         } else {
-            currentVid.play(); // 취소 시 다시 재생
+            currentVid.play();
         }
     }
 
-    // 4. 하트 리워드 및 배속 시스템 (Gamification)
     let isPressing = false;
     let tapTimeout;
     const playerDiv = document.getElementById('player');
@@ -265,34 +257,32 @@
         const heart = document.createElement('div');
         heart.innerHTML = '❤️';
         heart.className = 'floating-heart';
-        heart.style.left = (x - 17) + 'px'; // 클릭 지점 중앙 정렬
+        heart.style.left = (x - 17) + 'px'; 
         heart.style.top = (y - 17) + 'px';
         document.body.appendChild(heart);
         setTimeout(() => { heart.remove(); }, 800);
     }
 
     playerDiv.addEventListener('pointerdown', (e) => {
-        // UI 버튼 클릭 시 터치 이벤트 무시
         if(e.target.closest('#ui-layer') || e.target.closest('#complete-msg')) return;
 
         isPressing = true;
-        createHeart(e.clientX, e.clientY); // 하트 생성
-        setPlaybackRate(2.0); // 터치 시 즉시 2배속 (연속 터치 방어용)
+        createHeart(e.clientX, e.clientY);
+        setPlaybackRate(2.0); 
         
         clearTimeout(tapTimeout);
         tapTimeout = setTimeout(() => {
             if (isPressing) {
-                setPlaybackRate(1.2); // 손을 떼지 않고 누르고 있으면 1.2배속
+                setPlaybackRate(1.2); 
             } else {
-                setPlaybackRate(1.0); // 터치가 멈추면 1.0배속 복귀
+                setPlaybackRate(1.0); 
             }
-        }, 300); // 0.3초 기준 탭 vs 홀드 판별
+        }, 300); 
     });
 
     function handlePointerUp(e) {
         if(e.target.closest('#ui-layer') || e.target.closest('#complete-msg')) return;
         isPressing = false;
-        // 홀드(1.2배속) 중이었다면 손을 뗄 때 즉시 원상복구
         if (currentPlaybackRate === 1.2) {
             setPlaybackRate(1.0);
         }
