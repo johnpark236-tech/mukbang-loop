@@ -5,9 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>먹방 디펜스 게임</title>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #121212; color: #fff; text-align: center; margin: 0; padding: 0; overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+        html, body { width: 100%; height: 100%; }
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #090909;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-        #kiosk { padding: 15px 10px; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; }
+        /* 모바일에서는 기존처럼 화면 전체 사용 */
+        #app-shell {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #kiosk { padding: 15px 10px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; }
         h1 { color: #ffeb3b; font-size: 22px; margin: 5px 0 10px 0; }
         .level-badge { background: #00e676; color: #121212; padding: 5px 15px; border-radius: 20px; font-size: 16px; font-weight: bold; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0, 230, 118, 0.3); }
 
@@ -24,7 +48,7 @@
         .btn-start { background: #00e676; padding: 15px; font-size: 18px; border-radius: 10px; border: none; font-weight: bold; color: #121212; cursor: pointer; width: 90%; max-width: 340px; box-shadow: 0 4px 10px rgba(0, 230, 118, 0.4); margin-top: 5px; }
         .btn-start:active { transform: scale(0.98); }
 
-        #player { display: none; width: 100vw; height: 100vh; background: #000; position: relative; touch-action: none; }
+        #player { display: none; width: 100%; height: 100%; background: #000; position: relative; touch-action: none; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; visibility: hidden; pointer-events: none; background: #000; }
         video.is-active { opacity: 1; visibility: visible; z-index: 2; }
         video.is-buffering { opacity: 0; visibility: hidden; z-index: 1; }
@@ -46,7 +70,7 @@
         .food-chip .food-count { color: #ffeb3b; font-size: 12px; font-weight: bold; margin-left: 2px; }
         .food-chip.active-plate { color: #fff; border-color: #ffeb3b; background: rgba(255,235,59,0.18); box-shadow: 0 0 7px rgba(255,235,59,0.35); }
 
-        #complete-msg { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 2px solid #00e676; padding: 40px 20px; border-radius: 15px; z-index: 20; width: 80%; max-width: 320px; pointer-events: auto; }
+        #complete-msg { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 2px solid #00e676; padding: 40px 20px; border-radius: 15px; z-index: 20; width: 80%; max-width: 320px; pointer-events: auto; box-sizing: border-box; }
         #complete-msg h2 { font-size: 26px; color: #ffeb3b; margin: 0 0 10px 0; }
         #complete-msg h3 { font-size: 22px; color: #00e676; margin: 0 0 25px 0; }
 
@@ -55,7 +79,7 @@
             100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
         }
         .floating-heart {
-            position: absolute;
+            position: fixed;
             font-size: 35px;
             pointer-events: none;
             animation: floatUp 1.6s ease-out forwards;
@@ -73,28 +97,39 @@
             .food-chip .food-icon { font-size: 13px; }
             .food-chip .food-count { font-size: 11px; }
         }
+
+        /* PC/태블릿 넓은 화면: 스마트폰과 동일한 9:16 세로 캔버스로 고정 */
+        @media (min-width: 768px) {
+            #app-shell {
+                width: min(100vw, calc(100vh * 9 / 16));
+                height: min(100vh, calc(100vw * 16 / 9));
+                aspect-ratio: 9 / 16;
+                box-shadow: 0 0 34px rgba(0,0,0,0.75);
+            }
+        }
     </style>
 </head>
 <body>
+<div id="app-shell">
+    <div id="kiosk">
+        <h3 style="color: #00e676; margin-bottom: 10px;">시원 먹방 스튜디오입니다.</h3>
+        <div class="level-badge">🏆 현재 레벨: Lv <span id="current-level">1</span></div>
+        <h1>🍽️ 무한 먹방 퀘스트</h1>
+        <div class="menu-container" id="menu-container"></div>
+        <button class="btn-start" onclick="startMukbang()">먹방 시작하기 ▶</button>
+    </div>
 
-<div id="kiosk">
-    <h3 style="color: #00e676; margin-bottom: 10px;">시원 먹방 스튜디오입니다.</h3>
-    <div class="level-badge">🏆 현재 레벨: Lv <span id="current-level">1</span></div>
-    <h1>🍽️ 무한 먹방 퀘스트</h1>
-    <div class="menu-container" id="menu-container"></div>
-    <button class="btn-start" onclick="startMukbang()">먹방 시작하기 ▶</button>
-</div>
+    <div id="player">
+        <video id="vid1" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+        <video id="vid2" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
 
-<div id="player">
-    <video id="vid1" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
-    <video id="vid2" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+        <div id="ui-layer"></div>
 
-    <div id="ui-layer"></div>
-
-    <div id="complete-msg">
-        <h2>🎉 전 메뉴 먹방 성공! 🎉</h2>
-        <h3>LEVEL UP ➔ Lv <span id="new-level">2</span></h3>
-        <button class="btn-start" onclick="location.reload()">다음 레벨 도전하기</button>
+        <div id="complete-msg">
+            <h2>🎉 전 메뉴 먹방 성공! 🎉</h2>
+            <h3>LEVEL UP ➔ Lv <span id="new-level">2</span></h3>
+            <button class="btn-start" onclick="location.reload()">다음 레벨 도전하기</button>
+        </div>
     </div>
 </div>
 
@@ -179,9 +214,7 @@
         video.preload = 'auto';
         video.classList.remove('is-active');
         video.classList.add('is-buffering');
-        if (video.getAttribute('src') !== item.file) {
-            video.src = item.file;
-        }
+        if (video.getAttribute('src') !== item.file) video.src = item.file;
         video.currentTime = 0;
         video.load();
     }
@@ -202,7 +235,7 @@
     async function startMukbang() {
         generateQueue();
         if (queue.length === 0) {
-            alert("음식을 최소 1개 이상 담아주세요!");
+            alert('음식을 최소 1개 이상 담아주세요!');
             return;
         }
 
@@ -294,8 +327,8 @@
                 <span>잔여 수량 · Lv ${playerLevel}</span>
                 <div class="top-controls">
                     <span class="speed-guide">터치 2배 · 길게 1.5배</span>
-                    <span class="speed-badge" id="speed-badge">1.0×</span>
-                    <button class="btn-pause" id="pause-btn" onclick="togglePause(event)">⏸ 일시정지</button>
+                    <span class="speed-badge" id="speed-badge">${currentPlaybackRate.toFixed(1)}×</span>
+                    <button class="btn-pause" id="pause-btn" onclick="togglePause(event)">${isPaused ? '▶ 계속' : '⏸ 일시정지'}</button>
                     <button class="btn-home" onclick="goHome(event)">🏠 홈</button>
                 </div>
             </h2>
@@ -335,7 +368,7 @@
         const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
         const wasPlaying = !currentVid.paused;
         currentVid.pause();
-        if (confirm("홈으로 이동 하시겠습니까?\n현재 주문 내역은 초기화됩니다.")) {
+        if (confirm('홈으로 이동 하시겠습니까?\n현재 주문 내역은 초기화됩니다.')) {
             location.reload();
         } else if (wasPlaying && !isPaused) {
             currentVid.play().catch(() => {});
@@ -416,7 +449,7 @@
     }
 
     playerDiv.addEventListener('pointerup', handlePointerUp);
-    playerDiv.addEventListener('pointercancel', (e) => {
+    playerDiv.addEventListener('pointercancel', () => {
         if (!isPressing) return;
         isPressing = false;
         clearTimeout(tapTimeout);
