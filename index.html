@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>먹방 키오스크 & 순환 재생기</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #121212; color: #fff; text-align: center; margin: 0; padding: 0; overflow-x: hidden; }
+        #kiosk { padding: 40px 20px; }
+        h1 { color: #ffeb3b; }
+        .menu-container { display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; margin-top: 30px; }
+        .menu-item { background: #2c2c2c; padding: 20px; border-radius: 15px; box-shadow: 0 8px 15px rgba(0,0,0,0.5); width: 180px; }
+        .menu-item h3 { margin: 0 0 15px 0; font-size: 22px; color: #fff; }
+        .qty-control { display: flex; align-items: center; justify-content: space-between; }
+        .btn { background: #ff5252; color: white; border: none; padding: 10px 15px; font-size: 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background: #ff1744; }
+        .btn-start { background: #00e676; padding: 15px 40px; font-size: 24px; margin-top: 40px; border-radius: 10px; border: none; font-weight: bold; color: #121212; cursor: pointer; }
+        .btn-start:hover { background: #00c853; }
+        .qty { font-size: 26px; font-weight: bold; width: 40px; color: #ffeb3b;}
+        
+        #player { display: none; width: 100vw; height: 100vh; background: #000; position: relative; }
+        video { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; }
+        
+        #ui-layer { position: absolute; top: 30px; left: 30px; text-align: left; background: rgba(0,0,0,0.7); padding: 25px; border-radius: 12px; z-index: 10; border: 1px solid #555; backdrop-filter: blur(5px); }
+        #ui-layer h2 { margin-top: 0; color: #ffeb3b; font-size: 24px; margin-bottom: 20px; border-bottom: 2px solid #555; padding-bottom: 10px; }
+        .plate { font-size: 22px; margin-bottom: 12px; color: #ccc; transition: 0.3s; }
+        .active-plate { color: #fff; font-weight: bold; font-size: 26px; text-shadow: 0 0 10px #ffeb3b; transform: translateX(10px); }
+        .dot-full { color: #ff5252; letter-spacing: 2px; }
+        .dot-empty { color: #555; letter-spacing: 2px; }
+        
+        #complete-msg { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 3px solid #ffeb3b; padding: 60px; border-radius: 20px; z-index: 20; }
+        #complete-msg h2 { font-size: 45px; color: #ffeb3b; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+
+<div id="kiosk">
+    <h1>🍽️ 10초 무한 루프 먹방 주문 키오스크</h1>
+    <p style="font-size: 18px; color: #aaa;">각 메뉴는 최대 5개까지 주문 가능합니다. (라운드 로빈 순환 섭취 시스템 적용)</p>
+    
+    <div class="menu-container" id="menu-container"></div>
+    
+    <button class="btn-start" onclick="startMukbang()">먹방 시작하기 ▶</button>
+</div>
+
+<div id="player">
+    <video id="vid1" playsinline></video>
+    <video id="vid2" playsinline style="display:none;"></video>
+    
+    <div id="ui-layer"></div>
+    
+    <div id="complete-msg">
+        <h2>🎉 전 메뉴 완식 성공! 🎉</h2>
+        <button class="btn-start" onclick="location.reload()">새로운 먹방 주문하기</button>
+    </div>
+</div>
+
+<script>
+    const foods = [
+        { id: 'chicken', name: '치킨', file: 'chicken.mp4', qty: 0, icon: '🍗' },
+        { id: 'pizza', name: '피자', file: 'pizza.mp4', qty: 0, icon: '🍕' },
+        { id: 'ramen', name: '라면', file: 'ramen.mp4', qty: 0, icon: '🍜' },
+        { id: 'tteokbokki', name: '떡볶이', file: 'tteokbokki.mp4', qty: 0, icon: '🥘' },
+        { id: 'jjajang', name: '짜장면', file: 'jjajang.mp4', qty: 0, icon: '🍝' }
+    ];
+
+    let queue = [];
+    let currentIdx = 0;
+    let activeVideo = 1;
+
+    const menuContainer = document.getElementById('menu-container');
+    foods.forEach((food, idx) => {
+        const div = document.createElement('div');
+        div.className = 'menu-item';
+        div.innerHTML = `
+            <div style="font-size: 50px; margin-bottom: 15px;">${food.icon}</div>
+            <h3>${food.name}</h3>
+            <div class="qty-control">
+                <button class="btn" onclick="changeQty(${idx}, -1)">-</button>
+                <span class="qty" id="qty-${idx}">0</span>
+                <button class="btn" onclick="changeQty(${idx}, 1)">+</button>
+            </div>
+        `;
+        menuContainer.appendChild(div);
+    });
+
+    function changeQty(idx, delta) {
+        let newQty = foods[idx].qty + delta;
+        if (newQty >= 0 && newQty <= 5) {
+            foods[idx].qty = newQty;
+            document.getElementById(`qty-${idx}`).innerText = newQty;
+        }
+    }
+
+    function generateQueue() {
+        queue = [];
+        let remaining = foods.map(f => ({...f}));
+        let active = remaining.filter(f => f.qty > 0);
+        
+        while(active.length > 0) {
+            for (let i = 0; i < active.length; i++) {
+                let food = active[i];
+                if (food.qty > 0) {
+                    let snapshot = active.map(f => ({ name: f.name, icon: f.icon, qty: f.qty }));
+                    queue.push({ 
+                        foodId: food.id, 
+                        name: food.name, 
+                        file: food.file, 
+                        snapshot: snapshot 
+                    });
+                    food.qty--;
+                }
+            }
+            active = active.filter(f => f.qty > 0);
+        }
+    }
+
+    function startMukbang() {
+        generateQueue();
+        if (queue.length === 0) {
+            alert("음식을 최소 1개 이상 담아주세요!");
+            return;
+        }
+        document.getElementById('kiosk').style.display = 'none';
+        document.getElementById('player').style.display = 'block';
+        currentIdx = 0;
+        playNext();
+    }
+
+    function updateUI(snapshot, currentFoodName) {
+        const ui = document.getElementById('ui-layer');
+        ui.innerHTML = '<h2>테이블 잔여 현황</h2>';
+        snapshot.forEach(f => {
+            const isActive = f.name === currentFoodName ? 'active-plate' : '';
+            const fullDots = '●'.repeat(f.qty);
+            const emptyDots = '○'.repeat(5 - f.qty);
+            ui.innerHTML += `<div class="plate ${isActive}">
+                ${f.icon} ${f.name} &nbsp; 
+                <span class="dot-full">${fullDots}</span><span class="dot-empty">${emptyDots}</span> 
+                <span style="font-size: 16px; color:#aaa; margin-left:10px;">(${f.qty}인분)</span>
+            </div>`;
+        });
+    }
+
+    function playNext() {
+        if (currentIdx >= queue.length) {
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('complete-msg').style.display = 'block';
+            return;
+        }
+
+        const currentItem = queue[currentIdx];
+        updateUI(currentItem.snapshot, currentItem.name);
+
+        const v1 = document.getElementById('vid1');
+        const v2 = document.getElementById('vid2');
+        
+        let currentVid = activeVideo === 1 ? v1 : v2;
+        
+        if (!currentVid.src.endsWith(currentItem.file)) {
+            currentVid.src = currentItem.file;
+        }
+        
+        v1.style.display = activeVideo === 1 ? 'block' : 'none';
+        v2.style.display = activeVideo === 2 ? 'block' : 'none';
+        
+        currentVid.play();
+
+        currentVid.onended = () => {
+            currentIdx++;
+            activeVideo = activeVideo === 1 ? 2 : 1;
+            playNext();
+        };
+    }
+</script>
+</body>
+</html>
