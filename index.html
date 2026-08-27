@@ -6,7 +6,7 @@
     <title>먹방 디펜스 게임</title>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #121212; color: #fff; text-align: center; margin: 0; padding: 0; overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-        
+
         #kiosk { padding: 15px 10px; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; }
         h1 { color: #ffeb3b; font-size: 22px; margin: 5px 0 10px 0; }
         .level-badge { background: #00e676; color: #121212; padding: 5px 15px; border-radius: 20px; font-size: 16px; font-weight: bold; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0, 230, 118, 0.3); }
@@ -15,31 +15,37 @@
         .menu-item { background: #2c2c2c; padding: 10px 5px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); width: 30%; min-width: 90px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
         .menu-item .icon { font-size: 32px; margin-bottom: 5px; }
         .menu-item h3 { margin: 0 0 8px 0; font-size: 14px; color: #fff; }
-        
+
         .qty-control { display: flex; align-items: center; justify-content: center; width: 100%; gap: 5px; }
         .btn { background: #ff5252; color: white; border: none; padding: 5px 12px; font-size: 18px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn:active { background: #ff1744; }
         .qty { font-size: 18px; font-weight: bold; width: 20px; color: #ffeb3b; text-align: center; }
-        
+
         .btn-start { background: #00e676; padding: 15px; font-size: 18px; border-radius: 10px; border: none; font-weight: bold; color: #121212; cursor: pointer; width: 90%; max-width: 340px; box-shadow: 0 4px 10px rgba(0, 230, 118, 0.4); margin-top: 5px; }
         .btn-start:active { transform: scale(0.98); }
-        
+
         #player { display: none; width: 100vw; height: 100vh; background: #000; position: relative; touch-action: none; }
         video { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; visibility: hidden; pointer-events: none; background: #000; }
         video.is-active { opacity: 1; visibility: visible; z-index: 2; }
         video.is-buffering { opacity: 0; visibility: hidden; z-index: 1; }
-        
-        #ui-layer { position: absolute; top: 10px; left: 10px; text-align: left; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; z-index: 10; backdrop-filter: blur(4px); transform: scale(0.9); transform-origin: top left; border: 1px solid #444; width: 250px; pointer-events: auto; }
-        #ui-layer h2 { margin: 0 0 8px 0; color: #ffeb3b; font-size: 14px; border-bottom: 1px solid #555; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .btn-home { background: #ff5252; color: #fff; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-weight: bold; }
+
+        #ui-layer { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; text-align: left; background: rgba(0,0,0,0.58); padding: 8px; border-radius: 10px; z-index: 10; backdrop-filter: blur(4px); border: 1px solid #444; pointer-events: auto; box-sizing: border-box; }
+        #ui-layer h2 { margin: 0 0 6px 0; color: #ffeb3b; font-size: 13px; min-height: 30px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .top-controls { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
+        .speed-guide { color: #fff; font-size: 10px; font-weight: normal; white-space: nowrap; opacity: 0.92; }
+        .speed-badge { background: #ffeb3b; color: #121212; border-radius: 12px; padding: 3px 7px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .btn-pause, .btn-home { border: none; border-radius: 6px; padding: 5px 7px; font-size: 11px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+        .btn-pause { background: #2196f3; color: #fff; }
+        .btn-pause:active { background: #0d47a1; }
+        .btn-home { background: #ff5252; color: #fff; }
         .btn-home:active { background: #d50000; }
-        
-        .plate { font-size: 13px; margin-bottom: 6px; color: #ddd; transition: 0.3s; display: flex; align-items: center;}
-        .active-plate { color: #fff; font-weight: bold; font-size: 15px; text-shadow: 0 0 5px #ffeb3b; transform: translateX(5px); }
-        .dot-full { color: #ff5252; letter-spacing: 2px; font-size: 10px; margin-left: 8px;}
-        .dot-empty { color: #555; letter-spacing: 2px; font-size: 10px; }
-        
+
+        .food-status-row { display: flex; align-items: stretch; gap: 4px; width: 100%; overflow: hidden; }
+        .food-chip { flex: 1 1 0; min-width: 0; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 7px; padding: 5px 2px; color: #ddd; text-align: center; font-size: 10px; line-height: 1.15; white-space: nowrap; overflow: hidden; }
+        .food-chip .food-icon { font-size: 14px; margin-right: 1px; }
+        .food-chip .food-count { color: #ffeb3b; font-size: 12px; font-weight: bold; margin-left: 2px; }
+        .food-chip.active-plate { color: #fff; border-color: #ffeb3b; background: rgba(255,235,59,0.18); box-shadow: 0 0 7px rgba(255,235,59,0.35); }
+
         #complete-msg { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 2px solid #00e676; padding: 40px 20px; border-radius: 15px; z-index: 20; width: 80%; max-width: 320px; pointer-events: auto; }
         #complete-msg h2 { font-size: 26px; color: #ffeb3b; margin: 0 0 10px 0; }
         #complete-msg h3 { font-size: 22px; color: #00e676; margin: 0 0 25px 0; }
@@ -52,9 +58,20 @@
             position: absolute;
             font-size: 35px;
             pointer-events: none;
-            animation: floatUp 0.8s ease-out forwards;
+            animation: floatUp 1.6s ease-out forwards;
             z-index: 9999;
             filter: drop-shadow(0px 0px 5px rgba(255,0,0,0.5));
+        }
+
+        @media (max-width: 390px) {
+            #ui-layer { left: 5px; right: 5px; padding: 6px; }
+            #ui-layer h2 { font-size: 11px; }
+            .speed-guide { font-size: 9px; }
+            .speed-badge { padding: 3px 5px; font-size: 10px; }
+            .btn-pause, .btn-home { padding: 4px 5px; font-size: 10px; }
+            .food-chip { font-size: 9px; padding: 4px 1px; }
+            .food-chip .food-icon { font-size: 13px; }
+            .food-chip .food-count { font-size: 11px; }
         }
     </style>
 </head>
@@ -71,9 +88,9 @@
 <div id="player">
     <video id="vid1" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
     <video id="vid2" playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
-    
+
     <div id="ui-layer"></div>
-    
+
     <div id="complete-msg">
         <h2>🎉 전 메뉴 먹방 성공! 🎉</h2>
         <h3>LEVEL UP ➔ Lv <span id="new-level">2</span></h3>
@@ -103,8 +120,17 @@
     let currentIdx = 0;
     let activeVideo = 1;
     let currentPlaybackRate = 1.0;
+    let isPaused = false;
+    let isSwitchingVideo = false;
+    let isPressing = false;
+    let pressStartedAt = 0;
+    let tapTimeout;
+    let audioContext = null;
+    let allowBrowserExit = false;
 
     const menuContainer = document.getElementById('menu-container');
+    const playerDiv = document.getElementById('player');
+
     foods.forEach((food, idx) => {
         const div = document.createElement('div');
         div.className = 'menu-item';
@@ -121,7 +147,7 @@
     });
 
     function changeQty(idx, delta) {
-        let newQty = foods[idx].qty + delta;
+        const newQty = foods[idx].qty + delta;
         if (newQty >= 0 && newQty <= 5) {
             foods[idx].qty = newQty;
             document.getElementById(`qty-${idx}`).innerText = newQty;
@@ -130,15 +156,17 @@
 
     function generateQueue() {
         queue = [];
-        let remaining = foods.map(f => ({...f}));
+        const remaining = foods.map(f => ({...f}));
         let active = remaining.filter(f => f.qty > 0);
-        
-        while(active.length > 0) {
+
+        while (active.length > 0) {
             for (let i = 0; i < active.length; i++) {
-                let food = active[i];
+                const food = active[i];
                 if (food.qty > 0) {
-                    let snapshot = active.map(f => ({ name: f.name, icon: f.icon, qty: f.qty }));
-                    queue.push({ foodId: food.id, name: food.name, file: food.file, snapshot: snapshot });
+                    const snapshot = remaining
+                        .filter(f => foods.find(original => original.id === f.id).qty > 0)
+                        .map(f => ({ name: f.name, icon: f.icon, qty: f.qty }));
+                    queue.push({ foodId: food.id, name: food.name, file: food.file, snapshot });
                     food.qty--;
                 }
             }
@@ -151,26 +179,21 @@
         video.preload = 'auto';
         video.classList.remove('is-active');
         video.classList.add('is-buffering');
-
-        // 같은 파일 재생도 반드시 0초부터 시작하도록 새 로드를 준비한다.
         if (video.getAttribute('src') !== item.file) {
             video.src = item.file;
         }
+        video.currentTime = 0;
         video.load();
     }
 
     function waitUntilPlayable(video) {
-        if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-            return Promise.resolve();
-        }
-
+        if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve();
         return new Promise((resolve) => {
             const done = () => {
                 video.removeEventListener('canplay', done);
                 video.removeEventListener('canplaythrough', done);
                 resolve();
             };
-
             video.addEventListener('canplay', done, { once: true });
             video.addEventListener('canplaythrough', done, { once: true });
         });
@@ -185,21 +208,19 @@
 
         document.getElementById('kiosk').style.display = 'none';
         document.getElementById('player').style.display = 'block';
-
         currentIdx = 0;
         activeVideo = 1;
+        isPaused = false;
 
         const v1 = document.getElementById('vid1');
         const v2 = document.getElementById('vid2');
-
-        // 첫 영상과 다음 영상을 동시에 요청해 첫 전환부터 버퍼를 확보한다.
         prepareVideo(v1, queue[0]);
         if (queue.length > 1) prepareVideo(v2, queue[1]);
 
         updateUI(queue[0].snapshot, queue[0].name);
         await waitUntilPlayable(v1);
-
         v1.playbackRate = currentPlaybackRate;
+
         try {
             await v1.play();
             v1.classList.remove('is-buffering');
@@ -212,15 +233,11 @@
     document.getElementById('vid1').onended = playNext;
     document.getElementById('vid2').onended = playNext;
 
-    let isSwitchingVideo = false;
-
     async function playNext() {
-        if (isSwitchingVideo) return;
+        if (isSwitchingVideo || isPaused) return;
         isSwitchingVideo = true;
 
-        const finishedIdx = currentIdx;
-        const nextIdx = finishedIdx + 1;
-
+        const nextIdx = currentIdx + 1;
         if (nextIdx >= queue.length) {
             playerLevel++;
             localStorage.setItem('mukbangLevel', playerLevel);
@@ -235,14 +252,16 @@
         const nextVideoNumber = activeVideo === 1 ? 2 : 1;
         const nextVid = nextVideoNumber === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
 
-        // 현재 영상의 마지막 프레임은 그대로 유지하고, 다음 영상이 실제 재생 가능한 상태가 될 때까지 기다린다.
         await waitUntilPlayable(nextVid);
         nextVid.playbackRate = currentPlaybackRate;
 
         try {
-            // 다음 영상을 화면 밖(투명 상태)에서 먼저 재생시킨다.
-            // 실제 playing 상태가 된 뒤에만 화면을 교체하므로 삼각형/검은 화면 노출을 막는다.
             await nextVid.play();
+            if (isPaused) {
+                nextVid.pause();
+                isSwitchingVideo = false;
+                return;
+            }
 
             currentIdx = nextIdx;
             activeVideo = nextVideoNumber;
@@ -253,11 +272,8 @@
             currentVid.classList.remove('is-active');
             currentVid.classList.add('is-buffering');
 
-            // 전환 직후 방금 끝난 비디오 태그를 그 다음 영상 전용 버퍼로 즉시 재사용한다.
             const preloadIdx = currentIdx + 1;
-            if (preloadIdx < queue.length) {
-                prepareVideo(currentVid, queue[preloadIdx]);
-            }
+            if (preloadIdx < queue.length) prepareVideo(currentVid, queue[preloadIdx]);
         } catch (err) {
             console.error('다음 영상 재생 실패:', err);
         } finally {
@@ -267,85 +283,163 @@
 
     function updateUI(snapshot, currentFoodName) {
         const ui = document.getElementById('ui-layer');
+        ui.style.display = 'block';
+        const chips = snapshot.map(f => {
+            const activeClass = f.name === currentFoodName ? 'active-plate' : '';
+            return `<div class="food-chip ${activeClass}"><span class="food-icon">${f.icon}</span>${f.name}<span class="food-count">${f.qty}</span></div>`;
+        }).join('');
+
         ui.innerHTML = `
             <h2>
-                <span>테이블 잔여 현황</span>
-                <div style="display:flex; align-items:center;">
-                    <span style="font-size:12px; color:#00e676; margin-right:8px;">Lv ${playerLevel}</span>
+                <span>잔여 수량 · Lv ${playerLevel}</span>
+                <div class="top-controls">
+                    <span class="speed-guide">터치 2배 · 길게 1.5배</span>
+                    <span class="speed-badge" id="speed-badge">1.0×</span>
+                    <button class="btn-pause" id="pause-btn" onclick="togglePause(event)">⏸ 일시정지</button>
                     <button class="btn-home" onclick="goHome(event)">🏠 홈</button>
                 </div>
-            </h2>`;
-        snapshot.forEach(f => {
-            const isActive = f.name === currentFoodName ? 'active-plate' : '';
-            const fullDots = '●'.repeat(f.qty);
-            const emptyDots = '○'.repeat(5 - f.qty);
-            ui.innerHTML += `<div class="plate ${isActive}">
-                ${f.icon} ${f.name} &nbsp; 
-                <span class="dot-full">${fullDots}</span><span class="dot-empty">${emptyDots}</span> 
-            </div>`;
-        });
+            </h2>
+            <div class="food-status-row">${chips}</div>`;
     }
 
-    function goHome(e) {
-        e.stopPropagation();
-        const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
-        currentVid.pause();
-        
-        if (confirm("홈으로 이동 하시겠습니까?\\n현재 주문 내역은 초기화됩니다.")) {
-            location.reload();
-        } else {
-            currentVid.play();
-        }
+    function updateSpeedBadge(rate) {
+        const badge = document.getElementById('speed-badge');
+        if (badge) badge.textContent = `${rate.toFixed(1)}×`;
     }
-
-    let isPressing = false;
-    let tapTimeout;
-    const playerDiv = document.getElementById('player');
 
     function setPlaybackRate(rate) {
         currentPlaybackRate = rate;
         document.getElementById('vid1').playbackRate = rate;
         document.getElementById('vid2').playbackRate = rate;
+        updateSpeedBadge(rate);
+    }
+
+    function togglePause(e) {
+        e.stopPropagation();
+        const activeVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
+        const btn = document.getElementById('pause-btn');
+        if (!isPaused) {
+            isPaused = true;
+            activeVid.pause();
+            if (btn) btn.textContent = '▶ 계속';
+        } else {
+            isPaused = false;
+            activeVid.playbackRate = currentPlaybackRate;
+            activeVid.play().catch(err => console.error('재생 재개 실패:', err));
+            if (btn) btn.textContent = '⏸ 일시정지';
+        }
+    }
+
+    function goHome(e) {
+        e.stopPropagation();
+        const currentVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
+        const wasPlaying = !currentVid.paused;
+        currentVid.pause();
+        if (confirm("홈으로 이동 하시겠습니까?\n현재 주문 내역은 초기화됩니다.")) {
+            location.reload();
+        } else if (wasPlaying && !isPaused) {
+            currentVid.play().catch(() => {});
+        }
     }
 
     function createHeart(x, y) {
         const heart = document.createElement('div');
         heart.innerHTML = '❤️';
         heart.className = 'floating-heart';
-        heart.style.left = (x - 17) + 'px'; 
+        heart.style.left = (x - 17) + 'px';
         heart.style.top = (y - 17) + 'px';
         document.body.appendChild(heart);
-        setTimeout(() => { heart.remove(); }, 800);
+        setTimeout(() => heart.remove(), 1600);
+    }
+
+    function playTapDing() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!audioContext) audioContext = new AudioCtx();
+        if (audioContext.state === 'suspended') audioContext.resume();
+
+        const now = audioContext.currentTime;
+        const master = audioContext.createGain();
+        master.gain.setValueAtTime(0.0001, now);
+        master.gain.exponentialRampToValueAtTime(0.12, now + 0.008);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+        master.connect(audioContext.destination);
+
+        const tone1 = audioContext.createOscillator();
+        const tone2 = audioContext.createOscillator();
+        const gain2 = audioContext.createGain();
+        tone1.type = 'sine';
+        tone2.type = 'sine';
+        tone1.frequency.setValueAtTime(1318.51, now);
+        tone2.frequency.setValueAtTime(1975.53, now);
+        gain2.gain.setValueAtTime(0.28, now);
+        tone1.connect(master);
+        tone2.connect(gain2);
+        gain2.connect(master);
+        tone1.start(now);
+        tone2.start(now);
+        tone1.stop(now + 0.23);
+        tone2.stop(now + 0.18);
     }
 
     playerDiv.addEventListener('pointerdown', (e) => {
-        if(e.target.closest('#ui-layer') || e.target.closest('#complete-msg')) return;
+        if (e.target.closest('#ui-layer') || e.target.closest('#complete-msg') || isPaused) return;
+        if (isPressing) return;
 
         isPressing = true;
+        pressStartedAt = performance.now();
         createHeart(e.clientX, e.clientY);
-        setPlaybackRate(2.0); 
-        
+        setPlaybackRate(2.0);
+
         clearTimeout(tapTimeout);
         tapTimeout = setTimeout(() => {
-            if (isPressing) {
-                setPlaybackRate(1.2); 
-            } else {
-                setPlaybackRate(1.0); 
-            }
-        }, 300); 
+            if (isPressing) setPlaybackRate(1.5);
+        }, 300);
     });
 
     function handlePointerUp(e) {
-        if(e.target.closest('#ui-layer') || e.target.closest('#complete-msg')) return;
+        if (e.target.closest('#ui-layer') || e.target.closest('#complete-msg')) return;
+        if (!isPressing) return;
+
+        const pressDuration = performance.now() - pressStartedAt;
         isPressing = false;
-        if (currentPlaybackRate === 1.2) {
+        clearTimeout(tapTimeout);
+
+        if (pressDuration < 300) {
+            playTapDing();
+            setTimeout(() => {
+                if (!isPressing && !isPaused) setPlaybackRate(1.0);
+            }, Math.max(0, 300 - pressDuration));
+        } else {
             setPlaybackRate(1.0);
         }
     }
-    
-    playerDiv.addEventListener('pointerup', handlePointerUp);
-    playerDiv.addEventListener('pointercancel', handlePointerUp);
 
+    playerDiv.addEventListener('pointerup', handlePointerUp);
+    playerDiv.addEventListener('pointercancel', (e) => {
+        if (!isPressing) return;
+        isPressing = false;
+        clearTimeout(tapTimeout);
+        setPlaybackRate(1.0);
+    });
+
+    history.pushState({ mukbangGuard: true }, '', location.href);
+    window.addEventListener('popstate', () => {
+        if (allowBrowserExit) return;
+
+        const activeVid = activeVideo === 1 ? document.getElementById('vid1') : document.getElementById('vid2');
+        const playerVisible = document.getElementById('player').style.display === 'block';
+        const wasPlaying = playerVisible && !activeVid.paused && !isPaused;
+        if (wasPlaying) activeVid.pause();
+
+        if (confirm('먹방을 종료하고 나가시겠습니까?')) {
+            allowBrowserExit = true;
+            history.back();
+        } else {
+            history.pushState({ mukbangGuard: true }, '', location.href);
+            if (wasPlaying) activeVid.play().catch(() => {});
+        }
+    });
 </script>
 </body>
 </html>
